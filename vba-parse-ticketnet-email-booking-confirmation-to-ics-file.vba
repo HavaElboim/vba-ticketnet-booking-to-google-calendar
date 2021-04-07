@@ -51,6 +51,7 @@ Const olAppointmentItem = 1 '1 = Appointment
    Dim bookingPhoneWithSpaces As String
    Dim bookingPhone As String
    Dim HebrewName As String
+ 
    
    Dim searchStringSiftingLang As String
    Dim searchStringCustomer As String
