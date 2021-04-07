@@ -51,7 +51,7 @@ Const olAppointmentItem = 1 '1 = Appointment
    Dim bookingPhoneWithSpaces As String
    Dim bookingPhone As String
    Dim HebrewName As String
- 
+   Dim bookingReference As String
    
    Dim searchStringSiftingLang As String
    Dim searchStringCustomer As String
@@ -64,12 +64,13 @@ Const olAppointmentItem = 1 '1 = Appointment
    'Hebrew characters in unicode - see chart here: https://www.ssec.wisc.edu/~tomw/java/unicode.html#x0590
    
    searchStringSiftingLang = ChrW$(1488) & ChrW$(1504) & ChrW$(1490) & ChrW$(1500) & ChrW$(1497) & ChrW$(1514) ' 'àðâìéú
-    searchStringCustomer = ChrW$(1492) & ChrW$(1502) & ChrW$(1494) & ChrW$(1502) & ChrW$(1497) & ChrW$(1503) ' 'äîæîéï
+   searchStringCustomer = ChrW$(1492) & ChrW$(1502) & ChrW$(1494) & ChrW$(1502) & ChrW$(1497) & ChrW$(1503) ' 'äîæîéï
    searchStringCustomerName = ChrW$(1513) & ChrW$(1501) ' 'ùí
    searchStringPhone = ChrW$(1496) & ChrW$(1500) & ChrW$(1508) & ChrW$(1493) & ChrW$(1503)  ' 'èìôåï
-  searchStringDate = ChrW$(1514) & ChrW$(1488) & ChrW$(1512) & ChrW$(1497) & ChrW$(1498)    ' 'úàøéê
-  searchStringTime = ChrW$(1493) & ChrW$(1513) & ChrW$(1506) & ChrW$(1492)    ' 'åùòä
-  searchStringNumTickets = ChrW$(1499) & ChrW$(1502) & ChrW$(1493) & ChrW$(1514)    ' 'ëîåú
+   searchStringDate = ChrW$(1514) & ChrW$(1488) & ChrW$(1512) & ChrW$(1497) & ChrW$(1498)    ' 'úàøéê
+   searchStringTime = ChrW$(1493) & ChrW$(1513) & ChrW$(1506) & ChrW$(1492)    ' 'åùòä
+   searchStringNumTickets = ChrW$(1499) & ChrW$(1502) & ChrW$(1493) & ChrW$(1514)    ' 'ëîåú
+   searchStringReferenceNum = ChrW$(1492) & ChrW$(1494) & ChrW$(1502) & ChrW$(1504) & ChrW$(1514) & ChrW$(1499) & ChrW$(1501) & ChrW$(32) & ChrW$(1502) & ChrW$(1505) & ChrW$(1508) & ChrW$(1512)   'äæîðúëí îñôø'
    
    Set Reg1 = New RegExp
    Set Reg2 = New RegExp
@@ -151,6 +152,22 @@ Const olAppointmentItem = 1 '1 = Appointment
     
         'MsgBox "Direct reservation Date: " & bookingDate 'successful
         
+        'Looking for booking reference num
+        With Reg1
+            .Pattern = "Reservation Number\s*\s*\n*\r*\s*(\d*)\s*\n*\r*Date and Time"
+            .Global = True
+        End With
+        If Reg1.Test(Item.Body) Then
+        
+            Set M1 = Reg1.Execute(Item.Body)
+            For Each M In M1
+                Debug.Print M.SubMatches(0)
+                bookingReference = M.SubMatches(0)
+            Next
+        End If
+    
+        'MsgBox "Booking ref num: " & bookingReference 'successful
+
     'End of text extraction from confirmation email in English
     Else
         
@@ -160,7 +177,7 @@ Const olAppointmentItem = 1 '1 = Appointment
         'If oredered via the English site, the reservation message will be in English, but they may have booked either language
         
          With Reg1
-            .Pattern = searchStringSiftingLang      'Looks for àðâìéú
+            .Pattern = searchStringSiftingLang      'Looks for אנגלית
             .Global = True
         End With
         If Reg1.Test(Item.Body) Then
@@ -172,11 +189,11 @@ Const olAppointmentItem = 1 '1 = Appointment
        'Searching for customer name:
         With Reg1
           ' the ChrW$ Function Returns the Unicode character that corresponds to the specified character code.
-            'Looking for characters after "ùí äîæîéï" up until new line
+            'Looking for characters after "שם המזמין" up until new line
             'see https://stackoverflow.com/questions/44943450/vba-regex-matching-fraction-characters-e-g-1-8-3-8-in-string
             'dot matches every character except newline
         'ChrW$(32) represents a single space
-     .Pattern = searchStringCustomerName & ChrW$(32) & searchStringCustomer & "(.+\s*)"   'Looks for words after ùí äîæîéï
+     .Pattern = searchStringCustomerName & ChrW$(32) & searchStringCustomer & "(.+\s*)"   'Looks for words after שם המזמין
      
          'MsgBox "Testing for: " & searchStringCustomerName & ChrW$(32) & searchStringCustomer
             .Global = True
@@ -197,8 +214,7 @@ Const olAppointmentItem = 1 '1 = Appointment
     ' ChrW$(32) = space
     
         With Reg1
-          '.Pattern = searchStringPhone & ChrW$(32) & searchStringCustomer & "(.+\s*)"   'Looks for words after èìôåï äîæîéï
-          .Pattern = searchStringPhone & ChrW$(32) & searchStringCustomer & "\s*(\d*)\s*\S"   'Looks for numerical characters only after èìôåï äîæîéï
+          .Pattern = searchStringPhone & ChrW$(32) & searchStringCustomer & "\s*(\d*)\s*\S"   'Looks for numerical characters only after טלפון המזמין
         'MsgBox "Testing for: " & searchStringPhone & ChrW$(32) & searchStringCustomer
             .Global = True
         End With
@@ -217,7 +233,7 @@ Const olAppointmentItem = 1 '1 = Appointment
         
         'searchStringDate
         With Reg1
-          .Pattern = searchStringDate & ChrW$(32) & searchStringTime & "(.+\s*)"   'Looks for words after úàøéê åùòä
+          .Pattern = searchStringDate & ChrW$(32) & searchStringTime & "(.+\s*)"   'Looks for words after תאריך ושעה
      
         'MsgBox "Testing for: " & searchStringDate & ChrW$(32) & searchStringTime
             .Global = True
@@ -236,7 +252,7 @@ Const olAppointmentItem = 1 '1 = Appointment
          
          'Search for number of tickets
          With Reg1
-          .Pattern = searchStringNumTickets & "(.+\s*)"   'Looks for words after ëîåú
+          .Pattern = searchStringNumTickets & "(\d*)"   'Looks for words after כמות
      
         'MsgBox "Testing for: " & searchStringNumTickets
             .Global = True
@@ -245,14 +261,34 @@ Const olAppointmentItem = 1 '1 = Appointment
         If Reg1.Test(Item.Body) Then
             Set M1 = Reg1.Execute(Item.Body)
             For Each M In M1
-                bookingNumTickets = M.SubMatches(0) 'This will give the name and telephone together
+                bookingNumTickets = M.SubMatches(0) 
                 'MsgBox "Number of tickets: " & bookingNumTickets
-                Exit For 'don't move to the next instance of ëîåú
+                Exit For 'don't move to the next instance of כמות
             Next
 
         Else
         Exit Sub
         End If
+
+        With Reg1
+          .Pattern = searchStringReferenceNum & "\s*(\d*)\s*\S"   'Looks for words after הזמנתכם מספר
+     
+        MsgBox "Testing for: " & searchStringReferenceNum
+            .Global = True
+        End With
+        
+         If Reg1.Test(Item.Body) Then
+            Set M1 = Reg1.Execute(Item.Body)
+            For Each M In M1
+                bookingReference = M.SubMatches(0) 'This will give the booking reference number
+                MsgBox "Booking reference: " & bookingReference
+                Exit For 'don't move to the next instance of הזמנתכם מספר
+            Next
+
+        Else
+        Exit Sub
+        End If
+        
          
     End If
      
@@ -320,57 +356,98 @@ Const olAppointmentItem = 1 '1 = Appointment
  myRequiredAttendee.Type = olRequired
  'calendarItem.Display
  '*****************************
-   'temporarily commenting this out since don't want now to add to diary
-   'MsgBox "Saving calendar item file"
- 'calendarItem.SaveAs "C:\temp\HebOutlookCalendarBooking.ics"
     
  'MsgBox "wrtingn info to text file"
     ' Create the ics file
-    Filename = "HebBooking" + bookingCustomer + ".ics"
+    Filename = bookingReference + ".ics"
     PathString = "C:\temp\"
     FullPath = PathString + Filename
+
+        'if you need to check that file does not already exist, this is the code you need:
+    MsgBox "trying file " & FullPath
+    If Not Dir(FullPath) = "" Then
+        MsgBox "file exists"
+        GoTo FileExists
+        'File with this name already exists, exit sub
+    End If
+
+
     
     ' Creation of .ics file - this will be sent as an attachment
     ' and automatically imported by gmail into google calendar.
-       'will use fst (stream-type file with utf-8) instead of fso.
-   Dim fsT As Object
+       'will use fst (stream-type file with utf-8) instead of fso  for the file attachment.
+   Dim fs, fsT As Object
  
+  '**************************************
+ ' different ways to create text file:
+ ' *****
+ ' creating a FileSystemObject and using CreateTextFile and WriteLine/Write:
+ ' ***
+ '  Set fs = CreateObject("Scripting.FileSystemObject")
+ '  Set a = fs.CreateTextFile("c:\testfile.txt", True)
+ '  a.Write ("This is a test.")
+ '  a.WriteLine ("This is another test.")  'writeline adds a newline character to the end of the string
+ '  a.Close
+ ' *****
+ ' creating a ADODB.Stream (specifying type 2 which is for text/string data), and using writetext:
+ ' ***
+ ' Set fsT = CreateObject("ADODB.Stream")
+ ' fsT.Type = 2
+ ' fsT.Charset = "utf-8"
+ ' fsT.Open
+ ' fsT.writetext "test text", 1
+ ' fsT.SaveToFile FullPath, 2   '2: to allow overwrite
+ ' fsT.Close
+ '
+ ' *****
+ 
+  'Using the second method:
   'Create Stream object
-    Set fsT = CreateObject("ADODB.Stream")
-    'Specify stream type - we want To save text/string data.
-    fsT.Type = 2
-    'Specify charset For the source text data.
-    fsT.Charset = "utf-8"
-    'fsT.Charset = "utf-16"
-    'Open the stream And write binary data To the object
-    fsT.Open
-    
-    ' Write header information
-    'syntax: objStream.WriteText data,opt
-    'opt: optional paramater:  1   Writes the specified text and a line separator to a Stream object.
-    DataString = "BEGIN:VCALENDAR"
-    fsT.writetext DataString, 1
-    DataString = "BEGIN:VEVENT"
-    fsT.writetext DataString, 1
-    DataString = "SUMMARY:" + bookingCustomer
-    fsT.writetext DataString, 1
-    DataString = "LOCATION:" + "Mitzpeh HaMasuot"
-    fsT.writetext DataString, 1
-    DataString = "DTSTART;VALUE=DATE:" + Format(bookingDate, "yyyymmdd") + "T" + Format(bookingDate, "hhmmss")
-    fsT.writetext DataString, 1
-    DataString = "DESCRIPTION:" + bookingPhone
-    fsT.writetext DataString, 1
-    DataString = "END:VEVENT"
-    fsT.writetext DataString, 1
-    DataString = "END:VCALENDAR"
-    fsT.writetext DataString, 1
-       'Save (binary) data To disk
-       'MsgBox "Saving ics file"
-    fsT.SaveToFile FullPath, 2 '2 = overwrite
-         fsT.Close
+'    Set fsT = CreateObject("ADODB.Stream")
+'    'Specify stream type - we want To save text/string data.
+'    fsT.Type = 2
+'    'Specify charset For the source text data.
+'    fsT.Charset = "utf-8"
+'    'Open the stream And write binary data To the object
+'    fsT.Open
+'    MsgBox "opened file for writing: " & FullPath
+'    ' Write header information
+'    'syntax: objStream.WriteText data,opt
+'    'opt: optional paramater:  1   Writes the specified text and a line separator to a Stream object.
+'    DataString = "BEGIN:VCALENDAR"
+'    fsT.writetext DataString, 1
+'    DataString = "BEGIN:VEVENT"
+'    fsT.writetext DataString, 1
+'    DataString = "SUMMARY:" + bookingCustomer
+'    fsT.writetext DataString, 1
+'    DataString = "LOCATION:" + "Mitzpeh HaMasuot"
+'    fsT.writetext DataString, 1
+'    DataString = "DTSTART;VALUE=DATE:" + Format(bookingDate, "yyyymmdd") + "T" + Format(bookingDate, "hhmmss")
+'    fsT.writetext DataString, 1
+'    DataString = "DESCRIPTION:" + bookingPhone
+'    fsT.writetext DataString, 1
+'    DataString = "END:VEVENT"
+'    fsT.writetext DataString, 1
+'    DataString = "END:VCALENDAR"
+'    fsT.writetext DataString, 1
+'       'Save (binary) data To disk
+'       MsgBox "Saving ics file" & FullPath
+'    fsT.SaveToFile FullPath, 2 '2 = overwrite
+'    fsT.Close
 
-    
- 'MsgBox "closed file"
+  'Using the first method:
+    Set fs = CreateObject("Scripting.FileSystemObject")
+    Set fsT = fs.CreateTextFile(FullPath, True)
+    fsT.WriteLine ("BEGIN:VCALENDAR")
+    fsT.WriteLine ("BEGIN:VEVENT")
+    fsT.WriteLine ("SUMMARY:" + bookingCustomer)
+    fsT.WriteLine ("LOCATION:" + "Mitzpeh HaMasuot")
+    fsT.WriteLine ("DTSTART;VALUE=DATE:" + Format(bookingDate, "yyyymmdd") + "T" + Format(bookingDate, "hhmmss"))
+    fsT.WriteLine ("DESCRIPTION:" + bookingPhone)
+    fsT.WriteLine ("END:VEVENT")
+    fsT.WriteLine ("END:VCALENDAR")
+    fsT.Close
+    MsgBox "closed file"
 
  Set objRecipients = Item.Recipients
 
@@ -406,5 +483,9 @@ Exit Sub
 
 ErrorHandl:
    Debug.Print "Error number: " & Err.Number
+    Err.Clear
+FileExists:
+    Debug.Print "File already exists"
+    MsgBox "File already exists"
     Err.Clear
 End Sub
